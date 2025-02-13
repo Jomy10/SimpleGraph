@@ -152,6 +152,14 @@ public final class SimpleGraph {
     return data
   }
 
+  private func decode<T: Decodable>(_ data: Data) throws(SimpleGraphError) -> T {
+    do {
+      return try self.decoder.decode(T.self, from: data)
+    } catch {
+      throw .decodingError(error)
+    }
+  }
+
   public func insertNode(_ node: some Node) throws(SimpleGraphError) {
     let data = try self.encode(node)
     var stmt = try self.prepare(Queries.insertNode)
@@ -164,10 +172,25 @@ public final class SimpleGraph {
     try self.insertNode(node)
   }
 
-  public func nodeExists<ID: Codable>(id: ID) throws(SimpleGraphError) -> Bool {
+  public func nodeExists(id: some Codable) throws(SimpleGraphError) -> Bool {
     var stmt = try self.prepare("select id from nodes where id = ?")
     try stmt.bind(utf8StringData: try self.encodeId(id))
     return try stmt.step()
+  }
+
+  public func getNode<ResultNode: Node>(id: some Codable) throws(SimpleGraphError) -> ResultNode? {
+    let nodeId = try self.encodeId(id)
+    var stmt = try self.prepare("select body from nodes where id = ?")
+    try stmt.bind(utf8StringData: nodeId)
+    if try stmt.step() {
+      if let body = stmt.column(0) {
+        return try self.decode(body.data(using: .utf8)!)
+      } else {
+        return nil
+      }
+    } else {
+      return nil
+    }
   }
 
   public func deleteNode(_ node: some Node) throws(SimpleGraphError) {
