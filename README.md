@@ -1,6 +1,6 @@
 # SimpleGraph
 
-Swift bindings to [simple-graph](https://github.com/dpapathanasiou/simple-graph). A graph database in SQLite.
+Swift implementation of [simple-graph](https://github.com/dpapathanasiou/simple-graph). A graph database in SQLite.
 
 ## Usage
 
