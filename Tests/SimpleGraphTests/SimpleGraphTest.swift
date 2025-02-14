@@ -138,3 +138,39 @@ func dbFile(_ testName: String) throws -> URL {
   let allIds: [String] = try db.traverse(fromNode: b, inbound: true, outbound: true)
   #expect(allIds.count == 3)
 }
+
+@Test func traverseWithBodies() async throws {
+  let dbFile = try dbFile("traverseWithBodies")
+  let db: SimpleGraph = try SimpleGraph(at: dbFile)
+  db.trace({ message in print("[traverseWithBodies] " + message) })
+
+  let a = MyNode(data: "Hello")
+  let b = MyNode(data: "my")
+  let c = MyNode(data: "friend")
+
+  try db.insertNode(a)
+  try db.insertNode(b)
+  try db.insertNode(c)
+  try db.insertEdge(source: a, target: b)
+  try db.insertEdge(source: b, target: c, properties: "some data")
+
+  print("[traverseWithBodies]", a.id, b.id, c.id)
+
+  let decoder = JSONDecoder()
+  let ids: [(String, String, Data?)] = try db.traverse(fromNode: b, inbound: false, outbound: true)
+  #expect(ids.count == 3)
+
+  let cid = UUID(uuidString: ids[1].0)!
+  #expect(cid == c.id)
+  let rel = ids[1].1
+  #expect(rel == "->")
+  let body: String = try decoder.decode(String.self, from: ids[1].2!)
+  #expect(body == "some data")
+
+  let cid2 = UUID(uuidString: ids[2].0)!
+  #expect(cid == c.id)
+  let rel2 = ids[2].1
+  #expect(rel2 == "()")
+  let body2 = try decoder.decode(MyNode.self, from: ids[2].2!)
+  #expect(body2 == c)
+}
