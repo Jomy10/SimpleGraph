@@ -156,7 +156,7 @@ func dbFile(_ testName: String) throws -> URL {
 
   print("[traverseWithBodies]", a.id, b.id, c.id)
 
-  let decoder = JSONDecoder()
+  let decoder = SimpleGraph.decoder
   let ids: [(String, String, Data?)] = try db.traverse(fromNode: b, inbound: false, outbound: true)
   #expect(ids.count == 3)
 
@@ -168,7 +168,7 @@ func dbFile(_ testName: String) throws -> URL {
   #expect(body == "some data")
 
   let cid2 = UUID(uuidString: ids[2].0)!
-  #expect(cid == c.id)
+  #expect(cid2 == c.id)
   let rel2 = ids[2].1
   #expect(rel2 == "()")
   let body2 = try decoder.decode(MyNode.self, from: ids[2].2!)

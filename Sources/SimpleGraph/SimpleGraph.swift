@@ -44,7 +44,7 @@ fileprivate struct Queries {
 
 public final class SimpleGraph: @unchecked Sendable {
   let db: SQLite
-  private static let decoder = JSONDecoder()
+  public static let decoder = JSONDecoder()
   private static let encoder = JSONEncoder()
 
   /// - `dbFile`: the database file to open
