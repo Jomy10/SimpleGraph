@@ -1,4 +1,5 @@
 import Foundation
+
 #if os(macOS)
 import SQLite3
 #else
