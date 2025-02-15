@@ -65,8 +65,34 @@ struct SQLiteStatement: ~Copyable {
     }
   }
 
+  /// A column value
+  enum Column {
+    case string(String)
+    case data(Data)
+    case double(Double)
+    case int(Int64)
+    /// `NULL`
+    case none
+  }
+
+  func column(at idx: Int32) -> Column {
+    switch (sqlite3_column_type(self.handle, idx)) {
+      case SQLITE_NULL: return .none
+      case SQLITE_TEXT: return .string(self.column(idx)!)
+      case SQLITE_BLOB:
+        if let ptr = sqlite3_column_blob(self.handle, idx) {
+          return .data(Data(bytes: ptr, count: Int(sqlite3_column_bytes(self.handle, idx))))
+        } else {
+          return .data(Data())
+        }
+      case SQLITE_FLOAT: return .double(sqlite3_column_double(self.handle, idx))
+      case SQLITE_INTEGER: return .int(sqlite3_column_int64(self.handle, idx))
+      default: fatalError("unreacheable")
+    }
+  }
+
   @inline(__always)
-  func check(_ code: Int32) throws(SimpleGraphError) {
+  private func check(_ code: Int32) throws(SimpleGraphError) {
     if code != SQLITE_OK {
       throw SimpleGraphError.bindingError(String(cString: sqlite3_errstr(code)))
     }

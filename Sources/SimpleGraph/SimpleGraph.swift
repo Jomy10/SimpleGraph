@@ -1,7 +1,7 @@
 import Foundation
 import Jinja
 
-#if os(macOS)
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import SQLite3
 #else
 import CSQLite
@@ -157,7 +157,7 @@ public final class SimpleGraph: @unchecked Sendable {
     return try stmt.step()
   }
 
-  public func getNode<ResultNode: Node>(id: some Codable) throws(SimpleGraphError) -> ResultNode? {
+  public func getNode<ResultNode: Node>(id: some Codable, ofType: ResultNode.Type = ResultNode.self) throws(SimpleGraphError) -> ResultNode? {
     let nodeId = try Self.encodeId(id)
     var stmt = try self.prepare("select body from nodes where id = ?")
     try stmt.bind(utf8StringData: nodeId)
@@ -428,7 +428,7 @@ public final class SimpleGraph: @unchecked Sendable {
     }
   }
 
-  /// Traversal with bodies of edges
+  /// Traversal with bodies of edges and node data
   public func traverse(fromNode node: some Node, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> [(String, String, Data?)] {
     try self.traverse(fromNodeId: node.id, inbound: inbound, outbound: outbound)
   }
@@ -467,7 +467,10 @@ public final class SimpleGraph: @unchecked Sendable {
     }
   }
 
-  private func traverseQuery(withBodies: Bool, withInboundEdges: Bool, withOutboundEdges: Bool) throws(SimpleGraphError) -> String {
+  /// Use with caution.
+  ///
+  /// Can be used for custom SQL Queries
+  public func traverseQuery(withBodies: Bool, withInboundEdges: Bool, withOutboundEdges: Bool) throws(SimpleGraphError) -> String {
     do {
       return try Template(Queries.traverseTemplate).render([
         "with_bodies": withBodies,
@@ -504,6 +507,9 @@ public final class SimpleGraph: @unchecked Sendable {
     //}
   }
 
+  /// Use with caution
+  ///
+  /// Create a new SQLiteStatement from arbitrary SQL
   private func prepare(_ query: String) throws(SimpleGraphError) -> SQLiteStatement {
     //var stmt: SQLiteStatement? = nil
     //try self.sync { () throws(SimpleGraphError) -> Void in
@@ -517,11 +523,9 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   private func execute(_ query: String) throws(SimpleGraphError) {
-    //try self.sync { () throws(SimpleGraphError) -> Void in
     if sqlite3_exec(self.db, query, nil, nil, nil) != SQLITE_OK {
       throw SimpleGraphError.queryExecutionError(message: String(cString: sqlite3_errmsg(db)), query: query)
     }
-    //}
   }
 
   //private let queue = DispatchQueue(label: "SimpleGraph", attributes: [])
