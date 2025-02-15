@@ -4,7 +4,7 @@ import Jinja
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import SQLite3
 #else
-import CSQLite
+import CSQLite3
 #endif
 
 public enum SimpleGraphError: Swift.Error, @unchecked Sendable {

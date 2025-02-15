@@ -16,13 +16,13 @@ let package = Package(
   ],
   targets: [
     .systemLibrary(
-      name: "CSQLite",
+      name: "CSQLite3",
       pkgConfig: "sqlite3"
     ),
     .target(
       name: "SimpleGraph",
       dependencies: [
-        "CSQLite",
+        "CSQLite3",
         .product(name: "Jinja", package: "Jinja"),
       ],
       exclude: ["simple-graph/README.md", "simple-graph/.gitignore", "simple-graph/LICENSE"],

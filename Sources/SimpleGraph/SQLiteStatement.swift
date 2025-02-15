@@ -3,7 +3,7 @@ import Foundation
 #if os(macOS)
 import SQLite3
 #else
-import CSQLite
+import CSQLite3
 #endif
 
 struct SQLiteStatement: ~Copyable {
