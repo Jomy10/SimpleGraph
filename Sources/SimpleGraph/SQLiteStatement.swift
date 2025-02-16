@@ -1,10 +1,6 @@
 import Foundation
 
-#if os(macOS)
-import SQLite3
-#else
-import CSQLite3
-#endif
+import CSQLiteShim
 
 struct SQLiteStatement: ~Copyable {
   let handle: OpaquePointer
