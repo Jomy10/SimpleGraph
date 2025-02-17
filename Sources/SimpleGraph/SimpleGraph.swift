@@ -148,15 +148,16 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   public func nodeExists(id: some Codable) throws(SimpleGraphError) -> Bool {
-    var stmt = try self.prepare("select id from nodes where id = ?")
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    print(id)
+    var stmt = try self.prepare("SELECT id FROM nodes WHERE id = ?")
+    let encodedId = try Self.encodeId(id)
+    try stmt.bind(utf8StringData: encodedId)
     return try stmt.step()
   }
 
-  public func getNode<ResultNode: Node>(id: some Codable, ofType: ResultNode.Type = ResultNode.self) throws(SimpleGraphError) -> ResultNode? {
-    let nodeId = try Self.encodeId(id)
-    var stmt = try self.prepare("select body from nodes where id = ?")
-    try stmt.bind(utf8StringData: nodeId)
+  public func getNode<ResultNode: Node>(id nodeId: String, ofType: ResultNode.Type = ResultNode.self) throws(SimpleGraphError) -> ResultNode? {
+    var stmt = try self.prepare("SELECT body FROM nodes WHERE id = ?")
+    try stmt.bind(utf8String: nodeId)
     if try stmt.step() {
       if let body = stmt.column(0) {
         return try Self.decode(body.data(using: .utf8)!)
@@ -172,18 +173,18 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.deleteNode(id: node.id)
   }
 
-  public func deleteNode<ID: Codable>(id: ID) throws(SimpleGraphError) {
+  public func deleteNode(id: String) throws(SimpleGraphError) {
     //let idString = String(describing: id)
     // Delete edges
     try self.deleteEdges(ofNodeId: id)
 
     // Delete node
     var stmt = try self.prepare(Queries.deleteNode)
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     try stmt.step()
   }
 
-  public func insertEdge<Source: Node, Target: Node, Properties: Codable>(_ edge: Edge<Source, Target, Properties>) throws(SimpleGraphError) {
+  public func insertEdge<Properties: Codable>(_ edge: Edge<Properties>) throws(SimpleGraphError) {
     try self.insertEdge(sourceId: edge.sourceId, targetId: edge.targetId, properties: edge.properties)
   }
 
@@ -200,19 +201,19 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.insertEdge(source: source, target: target)
   }
 
-  public func insertEdge(sourceId: some Codable, targetId: some Codable, properties: some Codable) throws(SimpleGraphError) {
+  public func insertEdge(sourceId: String, targetId: String, properties: some Codable) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.insertEdge)
-    try stmt.bind(utf8StringData: try Self.encodeId(sourceId))
-    try stmt.bind(utf8StringData: try Self.encodeId(targetId))
+    try stmt.bind(utf8String: sourceId)
+    try stmt.bind(utf8String: targetId)
     let data = try Self.encode(properties)
     try stmt.bind(utf8StringData: data)
     try stmt.step()
   }
 
-  public func insertEdge(sourceId: some Codable, targetId: some Codable) throws(SimpleGraphError) {
+  public func insertEdge(sourceId: String, targetId: String) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.insertEdge)
-    try stmt.bind(utf8StringData: try Self.encodeId(sourceId))
-    try stmt.bind(utf8StringData: try Self.encodeId(targetId))
+    try stmt.bind(utf8String: sourceId)
+    try stmt.bind(utf8String: targetId)
     try stmt.bindNil()
     try stmt.step()
   }
@@ -223,16 +224,16 @@ public final class SimpleGraph: @unchecked Sendable {
     return try self.edgeExists(sourceId: source.id, targetId: target.id)
   }
 
-  public func edgeExists(sourceId: some Codable, targetId: some Codable) throws(SimpleGraphError) -> Bool {
+  public func edgeExists(sourceId: String, targetId: String) throws(SimpleGraphError) -> Bool {
     var stmt = try self.prepare("SELECT * FROM edges WHERE source = ? and target = ? and properties = ?")
-    try stmt.bind(utf8StringData: try Self.encodeId(sourceId))
-    try stmt.bind(utf8StringData: try Self.encodeId(targetId))
+    try stmt.bind(utf8String: sourceId)
+    try stmt.bind(utf8String: targetId)
     try stmt.bindNil()
     return try stmt.step()
   }
 
   /// Deletes the edge between source and target
-  public func deleteEdge<Source: Node, Target: Node, Properties: Codable>(_ edge: Edge<Source, Target, Properties>) throws(SimpleGraphError) {
+  public func deleteEdge<Properties: Codable>(_ edge: Edge<Properties>) throws(SimpleGraphError) {
     try self.deleteEdge(sourceId: edge.sourceId, targetId: edge.targetId)
   }
 
@@ -242,10 +243,10 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   /// Deletes the edge between source and target
-  public func deleteEdge(sourceId: some Codable, targetId: some Codable) throws(SimpleGraphError) {
+  public func deleteEdge(sourceId: String, targetId: String) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.deleteEdge)
-    try stmt.bind(utf8StringData: try Self.encodeId(sourceId))
-    try stmt.bind(utf8StringData: try Self.encodeId(targetId))
+    try stmt.bind(utf8String: sourceId)
+    try stmt.bind(utf8String: targetId)
   }
 
   /// Deletes all edges of the node
@@ -254,12 +255,11 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   /// Deletes all edges of the node
-  public func deleteEdges(ofNodeId id: some Codable) throws(SimpleGraphError) {
+  public func deleteEdges(ofNodeId id: String) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.deleteEdges)
     //let idStr = String(describing: id)
-    let idEncoded = try Self.encodeId(id)
-    try stmt.bind(utf8StringData: idEncoded)
-    try stmt.bind(utf8StringData: idEncoded)
+    try stmt.bind(utf8String: id)
+    try stmt.bind(utf8String: id)
   }
 
   /// Deletes incoming edges of the target node
@@ -268,9 +268,9 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   /// Deletes incoming edges of the target node
-  public func deleteEdges(ofTargetId id: some Codable) throws(SimpleGraphError) {
+  public func deleteEdges(ofTargetId id: String) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.deleteIncomingEdges)
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     try stmt.step()
   }
 
@@ -280,9 +280,9 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   /// Deletes outgoing edges of the source node
-  public func deleteEdges(ofSourceId id: some Codable) throws(SimpleGraphError) {
+  public func deleteEdges(ofSourceId id: String) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.deleteOutgoingEdges)
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     try stmt.step()
   }
 
@@ -292,7 +292,7 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   @available(macOS 10.15, *)
-  public func searchEdges(ofNodeId id: some Codable) throws(SimpleGraphError) -> AsyncThrowingStream<RawEdge, any Error> {
+  public func searchEdges(ofNodeId id: String) throws(SimpleGraphError) -> AsyncThrowingStream<RawEdge, any Error> {
     return try self.executeSearchEdges(try self.searchEdgesStmt(nodeId: id, query: Queries.searchEdges))
   }
 
@@ -300,7 +300,7 @@ public final class SimpleGraph: @unchecked Sendable {
     return try self.searchEdges(ofNodeId: node.id)
   }
 
-  public func searchEdges(ofNodeId id: some Codable) throws(SimpleGraphError) -> [RawEdge] {
+  public func searchEdges(ofNodeId id: String) throws(SimpleGraphError) -> [RawEdge] {
     return try self.executeSearchEdges(try self.searchEdgesStmt(nodeId: id, query: Queries.searchEdges))
   }
 
@@ -310,7 +310,7 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   @available(macOS 10.15, *)
-  public func searchEdges(ofSourceId id: some Codable) throws(SimpleGraphError) -> AsyncThrowingStream<RawEdge, any Error> {
+  public func searchEdges(ofSourceId id: String) throws(SimpleGraphError) -> AsyncThrowingStream<RawEdge, any Error> {
     return try self.executeSearchEdges(try self.searchEdgesStmt(nodeId: id, query: Queries.searchEdgesInbound))
   }
 
@@ -318,7 +318,7 @@ public final class SimpleGraph: @unchecked Sendable {
     return try self.searchEdges(ofSourceId: source.id)
   }
 
-  public func searchEdges(ofSourceId id: some Codable) throws(SimpleGraphError) -> [RawEdge] {
+  public func searchEdges(ofSourceId id: String) throws(SimpleGraphError) -> [RawEdge] {
     return try self.executeSearchEdges(try self.searchEdgesStmt(nodeId: id, query: Queries.searchEdgesInbound))
   }
 
@@ -328,7 +328,7 @@ public final class SimpleGraph: @unchecked Sendable {
   }
 
   @available(macOS 10.15, *)
-  public func searchEdges(ofTargetId id: some Codable) throws(SimpleGraphError) -> AsyncThrowingStream<RawEdge, any Error> {
+  public func searchEdges(ofTargetId id: String) throws(SimpleGraphError) -> AsyncThrowingStream<RawEdge, any Error> {
     return try self.executeSearchEdges(try self.searchEdgesStmt(nodeId: id, query: Queries.searchEdgesOutbound))
   }
 
@@ -336,15 +336,14 @@ public final class SimpleGraph: @unchecked Sendable {
     return try self.searchEdges(ofTargetId: target.id)
   }
 
-  public func searchEdges(ofTargetId id: some Codable) throws(SimpleGraphError) -> [RawEdge] {
+  public func searchEdges(ofTargetId id: String) throws(SimpleGraphError) -> [RawEdge] {
     return try self.executeSearchEdges(try self.searchEdgesStmt(nodeId: id, query: Queries.searchEdgesOutbound))
   }
 
-  private func searchEdgesStmt(nodeId: some Codable, query: String) throws(SimpleGraphError) -> SQLiteStatement {
+  private func searchEdgesStmt(nodeId id: String, query: String) throws(SimpleGraphError) -> SQLiteStatement {
     var stmt = try self.prepare(query)
-    let idEncoded = try Self.encodeId(nodeId)
-    try stmt.bind(utf8StringData: idEncoded)
-    try stmt.bind(utf8StringData: idEncoded)
+    try stmt.bind(utf8String: id)
+    try stmt.bind(utf8String: id)
     return stmt
   }
 
@@ -355,8 +354,8 @@ public final class SimpleGraph: @unchecked Sendable {
       do {
         while try stmt.step() {
           continuation.yield(RawEdge(
-            rawSourceId: stmt.column(0)!,
-            rawTargetId: stmt.column(1)!,
+            sourceId: stmt.column(0)!,
+            targetId: stmt.column(1)!,
             properties: stmt.column(2)
           ))
         }
@@ -372,7 +371,7 @@ public final class SimpleGraph: @unchecked Sendable {
   private func executeSearchEdges(_ stmt: consuming SQLiteStatement) throws(SimpleGraphError) -> [RawEdge] {
     var edges = [RawEdge]()
     while try stmt.step() {
-      edges.append(RawEdge(rawSourceId: stmt.column(0)!, rawTargetId: stmt.column(1)!, properties: stmt.column(2)))
+      edges.append(RawEdge(sourceId: stmt.column(0)!, targetId: stmt.column(1)!, properties: stmt.column(2)))
     }
     return edges
   }
@@ -394,9 +393,9 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.traverse(fromNodeId: node.id, inbound: inbound, outbound: outbound)
   }
 
-  public func traverse(fromNodeId id: some Codable, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> [String] {
+  public func traverse(fromNodeId id: String, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> [String] {
     var stmt = try self.prepare(try self.traverseQuery(withBodies: false, withInboundEdges: inbound, withOutboundEdges: outbound))
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     var ids = [String]()
     while try stmt.step() {
       let id = stmt.column(0)!
@@ -409,9 +408,9 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.traverse(fromNodeId: node.id, inbound: inbound, outbound: outbound)
   }
 
-  public func traverse(fromNodeId id: some Codable, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> AsyncThrowingStream<String, any Error> {
+  public func traverse(fromNodeId id: String, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> AsyncThrowingStream<String, any Error> {
     var stmt = try self.prepare(try self.traverseQuery(withBodies: false, withInboundEdges: inbound, withOutboundEdges: outbound))
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     return AsyncThrowingStream { continuation in
       do {
         while try stmt.step() {
@@ -429,9 +428,9 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.traverse(fromNodeId: node.id, inbound: inbound, outbound: outbound)
   }
 
-  public func traverse(fromNodeId id: some Codable, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> [(String, String, Data?)] {
+  public func traverse(fromNodeId id: String, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> [(String, String, Data?)] {
     var stmt = try self.prepare(try self.traverseQuery(withBodies: true, withInboundEdges: inbound, withOutboundEdges: outbound))
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     var res = [(String, String, Data?)]()
     while try stmt.step() {
       let id = stmt.column(0)!
@@ -446,9 +445,9 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.traverse(fromNodeId: node.id, inbound: inbound, outbound: outbound)
   }
 
-  public func traverse(fromNodeId id: some Codable, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> AsyncThrowingStream<(String, String, Data?), any Error> {
+  public func traverse(fromNodeId id: String, inbound: Bool = true, outbound: Bool = true) throws(SimpleGraphError) -> AsyncThrowingStream<(String, String, Data?), any Error> {
     var stmt = try self.prepare(try self.traverseQuery(withBodies: true, withInboundEdges: inbound, withOutboundEdges: outbound))
-    try stmt.bind(utf8StringData: try Self.encodeId(id))
+    try stmt.bind(utf8String: id)
     return AsyncThrowingStream { continuation in
       do {
         while try stmt.step() {
@@ -482,11 +481,11 @@ public final class SimpleGraph: @unchecked Sendable {
     try self.updateEdge(withSourceId: source.id, withTargetId: target.id, properties: properties)
   }
 
-  public func updateEdge(withSourceId sourceId: some Codable, withTargetId targetId: some Codable, properties: some Codable) throws(SimpleGraphError) {
+  public func updateEdge(withSourceId sourceId: String, withTargetId targetId: String, properties: some Codable) throws(SimpleGraphError) {
     var stmt = try self.prepare(Queries.updateEdge)
     try stmt.bind(utf8StringData: try Self.encode(properties))
-    try stmt.bind(utf8StringData: try Self.encodeId(sourceId))
-    try stmt.bind(utf8StringData: try Self.encodeId(targetId))
+    try stmt.bind(utf8String: sourceId)
+    try stmt.bind(utf8String: targetId)
     try stmt.step()
     // TODO: check if at least one row was updated?
   }
@@ -495,12 +494,10 @@ public final class SimpleGraph: @unchecked Sendable {
     var stmt = try self.prepare(Queries.updateNode)
     try stmt.bind(utf8StringData: try Self.encode(node))
     try stmt.bind(utf8StringData: try Self.encodeId(node.id))
-    //try self.sync { () throws(SimpleGraphError) in
     try stmt.step()
     if sqlite3_changes(self.db) == 0 { // <<- TODO: this probably isn't thread safe, how can we handle this better?
       throw SimpleGraphError.noNode(withId: node.id)
     }
-    //}
   }
 
   /// Use with caution
@@ -514,8 +511,6 @@ public final class SimpleGraph: @unchecked Sendable {
       throw SimpleGraphError.queryExecutionError(message: String(cString: sqlite3_errmsg(db)), query: query)
     }
     return SQLiteStatement(handle: stmtHandle!)
-    //}
-    //return stmt.take()!
   }
 
   private func execute(_ query: String) throws(SimpleGraphError) {
@@ -523,23 +518,6 @@ public final class SimpleGraph: @unchecked Sendable {
       throw SimpleGraphError.queryExecutionError(message: String(cString: sqlite3_errmsg(db)), query: query)
     }
   }
-
-  //private let queue = DispatchQueue(label: "SimpleGraph", attributes: [])
-  //private var queueContext: Int = UUID().hashValue
-  //private let queueKey = DispatchSpecificKey<Int>()
-  //private func sync<Result>(_ block: () throws(SimpleGraphError) -> Result) throws(SimpleGraphError) -> Result {
-  //  if DispatchQueue.getSpecific(key: queueKey) == queueContext {
-  //    return try block()
-  //  } else {
-  //    do {
-  //      return try self.queue.sync(execute: block)
-  //    } catch let error as SimpleGraphError {
-  //      throw error
-  //    } catch {
-  //      fatalError("unreachable: \(error)")
-  //    }
-  //  }
-  //}
 
   deinit {
     sqlite3_close_v2(self.db)

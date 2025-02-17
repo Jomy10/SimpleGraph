@@ -31,11 +31,37 @@ func sqlprep(db: SQLite, _ query: String) throws -> SQLiteStatement {
 }
 
 struct MyNode: Node, Equatable {
-  var id = UUID()
+  var uid = UUID()
   let data: String
+
+  var id: String {
+    get { self.uid.uuidString }
+    set { self.uid = UUID(uuidString: newValue)! }
+  }
+
+  init(data: String) {
+    self.data = data
+  }
 
   static func fromJSON(_ json: String) throws -> MyNode {
     return try JSONDecoder().decode(MyNode.self, from: json.data(using: .utf8)!)
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case id
+    case data
+  }
+
+  init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.uid = UUID(uuidString: try container.decode(String.self, forKey: .id))!
+    self.data = try container.decode(String.self, forKey: .data)
+  }
+
+  func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.id, forKey: .id)
+    try container.encode(self.data, forKey: .data)
   }
 }
 
@@ -127,13 +153,13 @@ func dbFile(_ testName: String) throws -> URL {
   print(ids)
   #expect(ids.count == 2)
   let cid = UUID(uuidString: ids[1])!
-  #expect(cid == c.id)
+  #expect(cid == c.uid)
 
   let ids2: [String] = try db.traverse(fromNode: b, inbound: true, outbound: false)
   print(ids2)
   #expect(ids2.count == 2)
   let aid = UUID(uuidString: ids2[1])!
-  #expect(aid == a.id)
+  #expect(aid == a.uid)
 
   let allIds: [String] = try db.traverse(fromNode: b, inbound: true, outbound: true)
   #expect(allIds.count == 3)
@@ -161,14 +187,14 @@ func dbFile(_ testName: String) throws -> URL {
   #expect(ids.count == 3)
 
   let cid = UUID(uuidString: ids[1].0)!
-  #expect(cid == c.id)
+  #expect(cid == c.uid)
   let rel = ids[1].1
   #expect(rel == "->")
   let body: String = try decoder.decode(String.self, from: ids[1].2!)
   #expect(body == "some data")
 
   let cid2 = UUID(uuidString: ids[2].0)!
-  #expect(cid2 == c.id)
+  #expect(cid2 == c.uid)
   let rel2 = ids[2].1
   #expect(rel2 == "()")
   let body2 = try decoder.decode(MyNode.self, from: ids[2].2!)

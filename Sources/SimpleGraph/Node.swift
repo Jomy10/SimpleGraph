@@ -1,53 +1,42 @@
 import Foundation
 
 public protocol Node: Codable {
-  associatedtype ID: Codable
-
-  var id: ID { get }
+  /// A unique identifier for the Node
+  var id: String { get }
 }
 
-public struct Edge<Source: Node, Target: Node, Properties: Codable> {
-  let sourceId: Source.ID
-  let targetId: Target.ID
+public struct Edge<Properties: Codable> {
+  let sourceId: String
+  let targetId: String
   var properties: Properties?
 
-  public func source(_ graphDB: SimpleGraph) throws -> Source {
+  public func source<Source: Node>(_ graphDB: SimpleGraph) throws -> Source {
     try graphDB.getNode(id: self.sourceId)!
   }
 
-  public func target(_ graphDB: SimpleGraph) throws -> Target {
+  public func target<Target: Node>(_ graphDB: SimpleGraph) throws -> Target {
     try graphDB.getNode(id: self.targetId)!
   }
 }
 
 public struct RawEdge {
-  let rawSourceId: String
-  let rawTargetId: String
+  public let sourceId: String
+  public let targetId: String
   let properties: String?
 
   /// Convert `RawEdge` into a specific `Edge`
-  public func get<Source: Node, Target: Node, Properties: Codable>(
-    source: Source.Type = Source.self,
-    target: Target.Type = Target.self,
+  public func get<Properties: Codable>(
     properties: Properties.Type = Properties.self
-  ) throws -> Edge<Source, Target, Properties> {
+  ) throws -> Edge<Properties> {
     let properties: Properties? = if let data = self.properties?.data(using: .utf8) {
       try SimpleGraph.decode(data)
     } else {
       nil
     }
     return Edge(
-      sourceId: try SimpleGraph.decode(self.rawSourceId.data(using: .utf8)!),
-      targetId: try SimpleGraph.decode(self.rawTargetId.data(using: .utf8)!),
+      sourceId: self.sourceId,
+      targetId: self.targetId,
       properties: properties
     )
-  }
-
-  public func sourceId<ID: Codable>(_: ID.Type = ID.self) throws -> ID {
-    return try SimpleGraph.decode(self.rawSourceId.data(using: .utf8)!)
-  }
-
-  public func targetId<ID: Codable>(_: ID.Type = ID.self) throws -> ID {
-    return try SimpleGraph.decode(self.rawTargetId.data(using: .utf8)!)
   }
 }
